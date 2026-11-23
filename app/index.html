@@ -34,12 +34,13 @@
       <details><summary>Cruces más frecuentes y definición de la final</summary><div id="matchups" class="split detail-grid"></div></details>
     </section>
     <section id="liguilla" aria-labelledby="bracket-title" class="panel">
-      <div class="section-head"><div><h2 id="bracket-title">Llave de la Liguilla</h2><p>Explora una corrida individual con el modelo y la semilla del escenario elegido.</p></div></div>
-      <div class="bracket-controls"><label for="bracket-scenario">Escenario</label><select id="bracket-scenario"><option value="0">A</option><option value="1">B</option></select><button id="next-round" disabled>Simular cuartos</button><button id="reset-bracket" disabled>Reiniciar llave</button></div>
+      <div class="section-head"><div><h2 id="bracket-title">Llave de la Liguilla</h2><p>Usa el modelo del escenario elegido. Cada nueva corrida individual obtiene su propia semilla.</p></div></div>
+      <div class="bracket-controls"><label for="bracket-scenario">Escenario</label><select id="bracket-scenario"><option value="0">A</option><option value="1">B</option></select><button id="next-round" disabled>Simular cuartos</button><button id="new-bracket" disabled>Nueva simulación</button><button id="replay-bracket" disabled>Repetir esta simulación</button></div>
+      <p id="bracket-seed" class="bracket-status"></p>
       <p id="bracket-status" role="status" class="bracket-status"></p>
       <div id="bracket" class="bracket"></div>
       <details id="projection" hidden><summary>Tabla simulada de fase regular</summary><div id="projected-standings"></div></details>
-      <details><summary>Pronóstico por partido de cuartos</summary><div id="fixtures"></div></details>
+      <details><summary>Pronóstico por partido de cuartos</summary><p>El pronóstico muestra el marcador más probable, no el resultado sorteado.</p><div id="fixtures"></div></details>
     </section>
     <section id="datos" aria-labelledby="data-title" class="panel">
       <h2 id="data-title">Datos y reglas</h2>

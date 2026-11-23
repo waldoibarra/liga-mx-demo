@@ -15,6 +15,7 @@ let editions;
 let projection;
 let history = [];
 let bracketSim;
+let bracketSeed;
 const scores = new Map();
 
 function element(tag, text, className) {
@@ -184,7 +185,9 @@ function renderBracket() {
   const regular = season.pending.length > 0 && !projection;
   const seeds = projection?.seeds ?? season.seeds;
   $('next-round').disabled = done || !season.ready;
-  $('reset-bracket').disabled = history.length === 0 && !projection;
+  $('new-bracket').disabled = !season.ready;
+  $('replay-bracket').disabled = !season.ready || bracketSeed == null;
+  $('bracket-seed').textContent = bracketSeed == null ? '' : `Semilla de esta corrida: ${bracketSeed}`;
   $('next-round').textContent = regular ? 'Simular fase regular pendiente' : ['Simular cuartos', 'Simular semifinales', 'Simular final', 'Simulación completa'][history.length];
   $('bracket-status').textContent = !season.ready ? 'Llave aún no disponible.' : done ? `Campeón: ${clubName(history[2][0].winner)}` : regular ? 'Primero define los ocho clasificados.' : `Siguiente ronda: ${roundNames[history.length]}`;
   $('projection').hidden = !projection?.standings;
@@ -234,7 +237,25 @@ function renderForecast() {
   $('fixtures').replaceChildren(table('Pronóstico de cuartos',['Partido','Local','Visitante','Marcador','Gana local','Empate','Gana visitante'],rows));
 }
 
-function resetBracket() { history = []; projection = null; bracketSim = null; renderBracket(); renderForecast(); }
+function resetBracket(seed = null) {
+  history = []; projection = null; bracketSim = null; bracketSeed = seed;
+  renderBracket(); renderForecast();
+}
+
+function newBracketSeed(previous) {
+  const [seed] = crypto.getRandomValues(new Uint32Array(1));
+  return seed === previous ? (seed + 1) >>> 0 : seed;
+}
+
+function advanceBracket() {
+  if (!season?.ready || history.length === 3) return;
+  const { model } = config(currentScenario());
+  bracketSeed ??= newBracketSeed();
+  bracketSim ??= Liga.simulator(modelRate(model),bracketSeed,season.context);
+  if (season.pending.length && !projection) projection = bracketSim.regular();
+  else history.push(bracketSim.next(history,projection?.seeds));
+  renderBracket(); renderForecast();
+}
 
 function renderArchive() {
   const filter = $('club-filter').value;
@@ -249,7 +270,7 @@ for (const s of scenarios) {
   setState(s, 'idle', 'Listo');
   s.form.addEventListener('submit', event => { event.preventDefault(); run(s); });
   s.form.addEventListener('change', event => {
-    if (season && currentScenario() === s && event.target.name !== 'runs') resetBracket();
+    if (season && currentScenario() === s && event.target.name === 'model') resetBracket();
   });
   s.cancel.addEventListener('click', () => end(s, s.worker, 'canceled', 'Cancelado', s.output ? 'Se conserva el último resultado completo.' : 'No se guardaron resultados parciales.'));
 }
@@ -257,17 +278,15 @@ $('run-both').addEventListener('click', () => {
   if (scenarios.every(s => s.form.reportValidity())) scenarios.forEach(run);
 });
 $('bracket-scenario').addEventListener('change', () => { if (season) resetBracket(); });
-$('next-round').addEventListener('click', () => {
-  const s = currentScenario();
-  const seedInput = s.form.elements.namedItem('seed');
-  if (!seedInput.validity.valid) { $('bracket-status').textContent = 'Ingresa una semilla válida en este escenario.'; return; }
-  const { model, seed } = config(s);
-  bracketSim ??= Liga.simulator(modelRate(model),seed,season.context);
-  if (season.pending.length && !projection) projection = bracketSim.regular();
-  else history.push(bracketSim.next(history,projection?.seeds));
-  renderBracket(); renderForecast();
+$('next-round').addEventListener('click', advanceBracket);
+$('new-bracket').addEventListener('click', () => {
+  resetBracket(newBracketSeed(bracketSeed));
+  advanceBracket();
 });
-$('reset-bracket').addEventListener('click', resetBracket);
+$('replay-bracket').addEventListener('click', () => {
+  resetBracket(bracketSeed);
+  advanceBracket();
+});
 $('club-filter').addEventListener('change', () => { if (season) renderArchive(); });
 
 function standingsTable(rows) {
