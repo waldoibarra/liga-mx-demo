@@ -32,6 +32,23 @@
       <div id="highlights" class="split metrics"></div>
       <div id="probabilities"></div>
       <details><summary>Cruces más frecuentes y definición de la final</summary><div id="matchups" class="split detail-grid"></div></details>
+      <details id="modelo">
+        <summary>Cómo funciona el modelo de probabilidad</summary>
+        <p>La distribución de Poisson asigna una probabilidad a cada número de goles según el promedio esperado. El simulador sortea los goles de cada equipo por separado.</p>
+        <h3>Cómo se calculan los goles esperados</h3>
+        <ul>
+          <li><strong>Por club:</strong> estima el ataque de cada equipo y la defensa del rival. Distingue entre local y visitante. Para el Apertura 2026, usa los 153 partidos de fase regular.</li>
+          <li><strong>Promedio de liga:</strong> usa los promedios de goles de local y visitante, sin distinguir entre equipos.</li>
+          <li><strong>En Liguilla:</strong> ambos modelos multiplican la expectativa de gol por 0.77. El ajuste se basa en 14 series del Apertura 2025 y Clausura 2026.</li>
+        </ul>
+        <h3>Ejemplo: Guadalajara vs. Pachuca</h3>
+        <p>Con Guadalajara de local, el modelo por club del Apertura 2026 estima 1.04 goles contra 0.87. Son promedios, no marcadores. El marcador exacto más probable es <strong>1–0 (15.3%)</strong>. Al sumar los marcadores posibles, Guadalajara gana el 38.6%, empata el 31.6% y pierde el 29.9%.</p>
+        <h3>Cómo se simula el torneo</h3>
+        <p>El simulador conserva los marcadores reales y sortea solo los pendientes. Suma ida y vuelta y aplica los <a href="#reglamento">desempates de cada ronda</a>.</p>
+        <p>Si hay prórroga, usa un tercio de la expectativa de gol de la vuelta. Cada penal tiene un 75% de probabilidad de entrar, sin distinguir al lanzador.</p>
+        <p>Una corrida individual muestra un desenlace posible. Las corridas masivas cuentan cuántas veces ocurre cada desenlace. Por ejemplo, 50,000 títulos en 200,000 corridas equivalen al 25% dentro del modelo.</p>
+        <p><strong>Límites:</strong> el modelo no incorpora bajas, alineaciones, cuotas ni cambios tácticos. En una prueba de 36 partidos, el modelo por club rindió peor que el promedio de liga. Conviene comparar ambos: un modelo más detallado no necesariamente predice mejor.</p>
+      </details>
     </section>
     <section id="liguilla" aria-labelledby="bracket-title" class="panel">
       <div class="section-head"><div><h2 id="bracket-title">Llave de la Liguilla</h2><p>Usa el modelo del escenario elegido. Cada nueva corrida individual obtiene su propia semilla.</p></div></div>
@@ -46,7 +63,8 @@
       <h2 id="data-title">Datos y reglas</h2>
       <details><summary>Calendario y marcadores de Liguilla</summary><div id="playoff-results"></div></details>
       <details><summary>Tabla general y calendario de fase regular</summary><div id="standings"></div><label class="archive-filter">Filtrar por club <select id="club-filter"><option value="all">Todos</option></select></label><div id="archive"></div></details>
-      <details><summary>Reglamento, fuentes y límites del modelo</summary>
+      <details>
+        <summary id="reglamento">Reglamento y fuentes</summary>
         <ul>
           <li>Los ocho primeros clasifican sin Play-In. Los cruces de cuartos son 1–8, 2–7, 3–6 y 4–5.</li>
           <li>En semifinales se reordenan los cuatro clubes por su posición original.</li>
@@ -58,10 +76,6 @@
           <li>En tablas simuladas, se usan puntos, diferencia, goles y goles de visita con igual número de salidas.</li>
           <li>Si persiste un empate simulado, se sortea el orden; no se pronostican Fair Play ni cociente.</li>
         </ul>
-        <p>El modelo Poisson no incorpora lesiones, alineaciones ni cuotas. El modelo por club rindió peor que el promedio de liga en una prueba de 36 partidos.</p>
-        <p>Ambos escenarios reducen 23% la expectativa de gol en Liguilla, según 14 series de Apertura 2025 y Clausura 2026.</p>
-        <p>El ajuste no cambia los resultados reales ni las simulaciones de fase regular.</p>
-        <p>Los tiempos extra usan un tercio de la tasa de gol de la vuelta. Cada penal tiene una conversión supuesta del 75%.</p>
         <p><a href="https://ligamx.net/cancha/tablas/tablaGeneralClasificacion/sp/60e74c9a334e55">Tabla oficial</a> · <a id="rules-source" href="https://ligamx.net/cancha/reglamentos">Reglamento del torneo</a> · <a href="https://ligamx.net/cancha/calendarios">Calendario</a> · <a href="https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard?dates=20261122">Resultados ESPN</a></p>
       </details>
     </section>
