@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liga MX · Apertura 2026 Simulator</title>
+<style>
+  :root { color-scheme: dark; --surface: #17211d; --line: #384842; --ink: #f5f9f6; --quiet: #b8c9bf; --accent: #b8ef7b; }
+  * { box-sizing: border-box; }
+  body { background: #0f1714; color: var(--ink); font: 1rem/1.5 system-ui, sans-serif; margin: 0; }
+  main { max-width: 68rem; margin: auto; padding: clamp(1rem, 4vw, 3rem); }
+  header { border-top: 4px solid var(--accent); padding-top: 1.5rem; }
+  h1 { font-size: clamp(2.4rem, 8vw, 5rem); line-height: 1; margin: .35em 0 .2em; letter-spacing: -.05em; }
+  h2, h3 { line-height: 1.2; }
+  p, summary { max-width: 70ch; }
+  .kicker { color: var(--accent); font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+  .muted, small { color: var(--quiet); }
+  section, details { background: var(--surface); border: 1px solid var(--line); border-radius: .9rem; padding: clamp(1rem, 3vw, 1.75rem); margin-block: 1rem; }
+  section > h2:first-child { margin-top: 0; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  form, .controls { display: flex; flex-wrap: wrap; gap: .8rem; align-items: end; }
+  label { display: grid; gap: .25rem; }
+  button, input, select { font: inherit; border-radius: .45rem; border: 1px solid var(--line); padding: .55rem .75rem; max-width: 100%; }
+  input { width: 9rem; }
+  button { color: #101810; background: var(--accent); font-weight: 700; cursor: pointer; }
+  button.secondary { color: var(--ink); background: transparent; }
+  button:disabled { opacity: .5; cursor: default; }
+  .table-wrap { overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: .55rem .65rem; border-bottom: 1px solid var(--line); }
+  thead th { color: var(--quiet); font-size: .85rem; }
+  tbody th { font-weight: 650; }
+  summary { cursor: pointer; font-weight: 700; }
+  code { overflow-wrap: anywhere; }
+</style>
+<main>
+  <header>
+    <div class="kicker">Offline prototype / Liga MX</div>
+    <h1>Apertura 2026</h1>
+    <p class="muted">Replay the playoff bracket or compare thousands of alternative outcomes. The completed regular season stays fixed.</p>
+  </header>
+  <noscript><p>Enable JavaScript to run simulations and view the match archive.</p></noscript>
+  <section aria-labelledby="batch-title">
+    <h2 id="batch-title">Tournament probabilities</h2>
+    <form id="batch">
+      <label>Simulations <input id="runs" type="number" min="100" max="200000" value="200000" required></label>
+      <label>Random seed <input id="seed" type="number" min="0" max="4294967295" value="20261122" required></label>
+      <label>Scoring model <select id="model"><option value="club">Club attack and defense</option><option value="league">League averages</option></select></label>
+      <button id="run">Run simulations</button>
+    </form>
+    <p id="batch-status" role="status"></p>
+    <div id="stats"></div>
+  </section>
+  <section aria-labelledby="fixtures-title">
+    <h2 id="fixtures-title">Quarterfinal forecast</h2>
+    <p class="muted">First legs: Nov 25–26. Second legs: Nov 28–29. The dates are competition windows, not kickoff confirmations.</p>
+    <div id="fixtures"></div>
+  </section>
+  <section aria-labelledby="play-title">
+    <h2 id="play-title">Play one bracket</h2>
+    <p class="muted">Step through each round using the selected model and seed. Change the seed for a different run.</p>
+    <div class="controls" id="play">
+      <button id="next" type="button">Simulate quarterfinals</button>
+      <button id="finish" type="button" class="secondary">Simulate all remaining rounds</button>
+      <button id="reset" type="button" class="secondary">Reset bracket</button>
+    </div>
+    <p id="play-status" role="status"></p>
+    <div id="bracket"></div>
+  </section>
+  <details>
+    <summary>Official standings and 153 completed matches</summary>
+    <div id="standings"></div>
+    <label>Filter results by club <select id="club-filter"><option value="all">All clubs</option></select></label>
+    <div id="archive"></div>
+  </details>
+  <details>
+    <summary>Rules, sources, and model limitations</summary>
+    <ul>
+      <li>Eight clubs qualify directly. Quarterfinal seeds pair 1–8, 2–7, 3–6, and 4–5.</li>
+      <li>Semifinalists are reseeded using their regular-season positions.</li>
+      <li>All rounds use two legs. In quarterfinals and semifinals, the higher seed advances on aggregate ties.</li>
+      <li>Final aggregate ties go to two 15-minute periods, then penalties if necessary.</li>
+      <li>Penalty kicks alternate. The shootout ends early if one side cannot catch up.</li>
+      <li>After five kicks each, tied shootouts continue until one side leads after an equal number of kicks.</li>
+    </ul>
+    <p>The simulator holds the official table fixed. It assumes clubs remain eligible and higher seeds host second legs.</p>
+    <p>It models tournament outcomes, not player eligibility, disciplinary events, administrative exceptions, or kickoff assignments.</p>
+    <p>Goals use independent Poisson draws. Extra time uses one-third of each club’s second-leg rate.</p>
+    <p>Each penalty has an assumed 75% conversion rate. No injury, lineup, or expected-goals data is used.</p>
+    <p>The club model performed worse than league averages on a 36-match holdout. Treat outputs as scenarios, not calibrated forecasts.</p>
+    <p><a href="https://ligamx.net/cancha/tablas/tablaGeneralClasificacion/sp/60e74c9a334e55">Official standings</a> · <a href="https://cldrsrcs.apilmx.com/v1/docs/Reglamentos/Competencia/1_LIGA_MX/30_LIGA_MX_20260715211255.pdf">Competition rules, articles 22–33</a> · <a href="https://cldrsrcs.apilmx.com/v1/docs/Calendarios/1_LIGA_MX/329_LIGA_MX_20260727150913.pdf">Official calendar</a> · <a href="https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard?dates=20261122">ESPN match feed</a></p>
+    <p class="muted">Snapshot: November 22, 2026, Mexico City time. Runs are reproducible with the same model, seed, and sample size.</p>
+  </details>
+</main>
+<script id="snapshot" type="application/json">
+{"clubs":["Guadalajara", "Cruz Azul", "América", "Atlas", "Toluca", "Monterrey", "León", "Pachuca", "Tijuana", "Santos", "Pumas UNAM", "Querétaro", "Puebla", "Atlético de San Luis", "Tigres UANL", "Necaxa", "Atlante", "FC Juárez"],"games":[
+["2026-07-17T01:00Z", 15, 16, 2, 1, "Estadio Victoria"],
+["2026-07-17T03:10Z", 8, 14, 3, 1, "Estadio Caliente"],
+["2026-07-18T01:00Z", 13, 1, 2, 3, "Estadio Libertad Financiera"],
+["2026-07-18T01:00Z", 6, 3, 2, 3, "Estadio León"],
+["2026-07-18T03:00Z", 17, 12, 0, 1, "Estadio Olímpico Benito Juárez"],
+["2026-07-18T23:00Z", 10, 7, 0, 3, "Estadio Olímpico Universitario"],
+["2026-07-19T01:05Z", 5, 9, 3, 2, "Estadio BBVA"],
+["2026-07-19T01:07Z", 0, 4, 0, 2, "Estadio Akron"],
+["2026-07-19T03:10Z", 11, 2, 0, 1, "Estadio Corregidora"],
+["2026-07-22T01:00Z", 1, 12, 2, 1, "Estadio Banorte"],
+["2026-07-22T03:05Z", 4, 10, 1, 2, "Estadio Nemesio Díez Riega"],
+["2026-07-25T03:00Z", 16, 2, 1, 1, "Estadio Banorte"],
+["2026-07-25T03:00Z", 8, 6, 1, 0, "Estadio Caliente"],
+["2026-07-25T23:07Z", 0, 17, 1, 0, "Estadio Akron"],
+["2026-07-26T03:00Z", 9, 3, 0, 1, "Estadio Corona"],
+["2026-07-26T03:00Z", 14, 13, 2, 2, "Estadio Universitario"],
+["2026-07-26T23:00Z", 15, 5, 2, 1, "Estadio Victoria"],
+["2026-07-27T01:06Z", 7, 11, 1, 2, "Estadio Hidalgo"],
+["2026-08-01T01:00Z", 12, 0, 1, 1, "Estadio Cuauhtémoc"],
+["2026-08-01T03:00Z", 13, 8, 0, 0, "Estadio Libertad Financiera"],
+["2026-08-01T03:00Z", 17, 10, 1, 5, "Estadio Olímpico Benito Juárez"],
+["2026-08-01T23:00Z", 11, 14, 3, 2, "Estadio Corregidora"],
+["2026-08-02T01:05Z", 3, 5, 0, 2, "Estadio Jalisco"],
+["2026-08-02T01:06Z", 6, 7, 1, 0, "Estadio León"],
+["2026-08-02T03:00Z", 1, 16, 2, 3, "Estadio Banorte"],
+["2026-08-02T23:00Z", 2, 9, 3, 0, "Estadio Banorte"],
+["2026-08-03T01:05Z", 4, 15, 3, 1, "Estadio Nemesio Díez Riega"],
+["2026-08-15T23:00Z", 16, 4, 0, 0, "Estadio Banorte"],
+["2026-08-16T01:10Z", 5, 17, 6, 1, "Estadio BBVA"],
+["2026-08-16T03:10Z", 3, 14, 2, 1, "Estadio Jalisco"],
+["2026-08-16T18:00Z", 10, 11, 0, 0, "Estadio Olímpico Universitario"],
+["2026-08-16T23:00Z", 2, 13, 3, 0, "Estadio Banorte"],
+["2026-08-17T01:10Z", 9, 0, 0, 1, "Estadio Corona"],
+["2026-08-17T03:00Z", 8, 1, 2, 1, "Estadio Caliente"],
+["2026-08-18T01:00Z", 15, 6, 1, 2, "Estadio Victoria"],
+["2026-08-18T03:06Z", 7, 12, 2, 3, "Estadio Hidalgo"],
+["2026-08-22T01:00Z", 6, 5, 2, 0, "Estadio León"],
+["2026-08-22T01:00Z", 14, 16, 2, 0, "Estadio Universitario"],
+["2026-08-22T03:10Z", 17, 2, 1, 2, "Estadio Olímpico Benito Juárez"],
+["2026-08-22T03:10Z", 11, 4, 1, 2, "Estadio Corregidora"],
+["2026-08-22T23:07Z", 0, 8, 5, 2, "Estadio Akron"],
+["2026-08-23T01:00Z", 12, 9, 3, 2, "Estadio Cuauhtémoc"],
+["2026-08-23T03:00Z", 1, 3, 0, 2, "Estadio Banorte"],
+["2026-08-23T23:00Z", 13, 7, 1, 1, "Estadio Libertad Financiera"],
+["2026-08-24T01:00Z", 10, 15, 1, 1, "Estadio Olímpico Universitario"],
+["2026-08-29T01:00Z", 16, 6, 1, 1, "Estadio Banorte"],
+["2026-08-29T01:00Z", 15, 1, 1, 3, "Estadio Victoria"],
+["2026-08-29T03:10Z", 8, 10, 2, 0, "Estadio Caliente"],
+["2026-08-29T23:00Z", 3, 11, 1, 3, "Estadio Jalisco"],
+["2026-08-29T23:00Z", 7, 0, 1, 1, "Estadio Hidalgo"],
+["2026-08-30T01:05Z", 2, 12, 2, 0, "Estadio Banorte"],
+["2026-08-30T03:10Z", 9, 14, 0, 0, "Estadio Corona"],
+["2026-08-31T00:00Z", 4, 17, 4, 0, "Estadio Nemesio Díez Riega"],
+["2026-08-31T02:10Z", 5, 13, 1, 3, "Estadio BBVA"],
+["2026-09-05T03:00Z", 17, 7, 0, 2, "Estadio Olímpico Benito Juárez"],
+["2026-09-05T23:00Z", 13, 0, 0, 3, "Estadio Libertad Financiera"],
+["2026-09-06T01:00Z", 14, 15, 1, 1, "Estadio Universitario"],
+["2026-09-06T03:00Z", 3, 16, 1, 1, "Estadio Jalisco"],
+["2026-09-06T23:00Z", 1, 9, 1, 0, "Estadio Banorte"],
+["2026-09-11T03:05Z", 10, 6, 3, 1, "Estadio Olímpico Universitario"],
+["2026-09-12T01:00Z", 15, 12, 0, 1, "Estadio Victoria"],
+["2026-09-12T03:00Z", 16, 7, 0, 3, "Estadio Banorte"],
+["2026-09-12T03:10Z", 8, 11, 0, 1, "Estadio Caliente"],
+["2026-09-12T23:05Z", 4, 3, 5, 2, "Estadio Nemesio Díez Riega"],
+["2026-09-13T01:10Z", 5, 14, 0, 0, "Estadio BBVA"],
+["2026-09-13T03:15Z", 1, 2, 4, 3, "Estadio Banorte"],
+["2026-09-14T01:00Z", 9, 17, 2, 1, "Estadio Corona"],
+["2026-09-14T01:07Z", 0, 10, 3, 0, "Estadio Akron"],
+["2026-09-15T01:00Z", 6, 13, 2, 0, "Estadio León"],
+["2026-09-16T01:00Z", 12, 4, 0, 1, "Estadio Cuauhtémoc"],
+["2026-09-19T01:00Z", 12, 16, 1, 1, "Estadio Cuauhtémoc"],
+["2026-09-19T03:00Z", 17, 14, 2, 0, "Estadio Olímpico Benito Juárez"],
+["2026-09-19T23:00Z", 3, 10, 1, 1, "Estadio Jalisco"],
+["2026-09-19T23:00Z", 13, 15, 3, 1, "Estadio Libertad Financiera"],
+["2026-09-20T01:10Z", 5, 1, 1, 0, "Estadio BBVA"],
+["2026-09-20T03:15Z", 2, 0, 2, 2, "Estadio Banorte"],
+["2026-09-21T00:00Z", 7, 8, 2, 2, "Estadio Hidalgo"],
+["2026-09-21T00:00Z", 4, 9, 2, 3, "Estadio Nemesio Díez Riega"],
+["2026-09-21T02:10Z", 11, 6, 1, 1, "Estadio Corregidora"],
+["2026-09-26T01:00Z", 16, 5, 4, 2, "Estadio Banorte"],
+["2026-09-26T03:00Z", 8, 3, 2, 3, "Estadio Caliente"],
+["2026-09-26T22:50Z", 1, 4, 3, 3, "Estadio Banorte"],
+["2026-09-26T23:07Z", 0, 11, 0, 2, "Estadio Akron"],
+["2026-09-27T03:05Z", 9, 7, 1, 0, "Estadio Corona"],
+["2026-09-27T03:10Z", 14, 12, 1, 0, "Estadio Universitario"],
+["2026-09-27T18:00Z", 10, 13, 2, 3, "Estadio Olímpico Universitario"],
+["2026-09-28T01:00Z", 6, 17, 2, 1, "Estadio León"],
+["2026-09-28T03:10Z", 15, 2, 2, 4, "Estadio Victoria"],
+["2026-10-10T01:00Z", 12, 6, 1, 1, "Estadio Cuauhtémoc"],
+["2026-10-10T03:00Z", 14, 4, 3, 2, "Estadio Universitario"],
+["2026-10-10T23:00Z", 17, 8, 1, 1, "Estadio Olímpico Benito Juárez"],
+["2026-10-10T23:00Z", 11, 16, 2, 0, "Estadio Corregidora"],
+["2026-10-11T01:00Z", 3, 0, 1, 1, "Estadio Jalisco"],
+["2026-10-11T03:10Z", 2, 5, 1, 1, "Estadio Banorte"],
+["2026-10-11T23:00Z", 13, 9, 1, 2, "Estadio Libertad Financiera"],
+["2026-10-11T23:10Z", 7, 15, 3, 3, "Estadio Hidalgo"],
+["2026-10-12T01:15Z", 10, 1, 3, 3, "Estadio Olímpico Universitario"],
+["2026-10-17T01:00Z", 15, 3, 0, 2, "Estadio Victoria"],
+["2026-10-17T03:00Z", 16, 10, 1, 2, "Estadio Banorte"],
+["2026-10-17T03:05Z", 8, 12, 0, 0, "Estadio Caliente"],
+["2026-10-17T23:00Z", 9, 11, 5, 0, "Estadio Corona"],
+["2026-10-17T23:07Z", 0, 14, 1, 1, "Estadio Akron"],
+["2026-10-18T01:00Z", 6, 2, 3, 5, "Estadio León"],
+["2026-10-18T01:00Z", 4, 13, 1, 1, "Estadio Nemesio Díez Riega"],
+["2026-10-18T03:10Z", 1, 17, 5, 0, "Estadio Banorte"],
+["2026-10-19T01:00Z", 5, 7, 2, 1, "Estadio BBVA"],
+["2026-10-21T00:07Z", 0, 15, 1, 0, "Estadio Akron"],
+["2026-10-21T01:00Z", 13, 11, 2, 1, "Estadio Libertad Financiera"],
+["2026-10-21T01:00Z", 17, 16, 0, 1, "Estadio Olímpico Benito Juárez"],
+["2026-10-21T03:10Z", 14, 6, 0, 2, "Estadio Universitario"],
+["2026-10-22T01:00Z", 3, 2, 2, 5, "Estadio Jalisco"],
+["2026-10-22T01:00Z", 12, 5, 1, 4, "Estadio Cuauhtémoc"],
+["2026-10-22T01:00Z", 4, 8, 2, 2, "Estadio Nemesio Díez Riega"],
+["2026-10-22T03:10Z", 7, 1, 1, 2, "Estadio Hidalgo"],
+["2026-10-22T03:10Z", 9, 10, 2, 0, "Estadio Corona"],
+["2026-10-24T01:00Z", 15, 17, 1, 1, "Estadio Victoria"],
+["2026-10-24T03:00Z", 16, 13, 0, 1, "Estadio Banorte"],
+["2026-10-24T23:00Z", 6, 4, 1, 1, "Estadio León"],
+["2026-10-25T01:00Z", 5, 0, 0, 1, "Estadio BBVA"],
+["2026-10-25T03:10Z", 10, 14, 1, 1, "Estadio Olímpico Universitario"],
+["2026-10-25T23:00Z", 3, 12, 4, 3, "Estadio Jalisco"],
+["2026-10-26T01:00Z", 11, 1, 1, 3, "Estadio Corregidora"],
+["2026-10-26T01:05Z", 2, 7, 1, 2, "Estadio Banorte"],
+["2026-10-26T03:10Z", 8, 9, 4, 1, "Estadio Caliente"],
+["2026-10-29T03:00Z", 2, 8, 1, 1, "Estadio Banorte"],
+["2026-10-31T01:00Z", 13, 3, 0, 1, "Estadio Libertad Financiera"],
+["2026-10-31T01:00Z", 17, 11, 3, 1, "Estadio Olímpico Benito Juárez"],
+["2026-10-31T03:00Z", 12, 10, 1, 2, "Estadio Cuauhtémoc"],
+["2026-10-31T23:00Z", 7, 14, 3, 0, "Estadio Hidalgo"],
+["2026-11-01T01:05Z", 5, 8, 3, 3, "Estadio BBVA"],
+["2026-11-01T01:07Z", 0, 16, 4, 2, "Estadio Akron"],
+["2026-11-01T03:10Z", 2, 4, 2, 2, "Estadio Banorte"],
+["2026-11-01T23:00Z", 9, 15, 1, 0, "Estadio Corona"],
+["2026-11-02T01:10Z", 1, 6, 2, 1, "Estadio Banorte"],
+["2026-11-07T01:00Z", 13, 17, 0, 1, "Estadio Libertad Financiera"],
+["2026-11-07T01:00Z", 15, 8, 1, 0, "Estadio Victoria"],
+["2026-11-07T03:00Z", 16, 9, 0, 2, "Estadio Banorte"],
+["2026-11-07T23:00Z", 3, 7, 1, 4, "Estadio Jalisco"],
+["2026-11-08T01:00Z", 14, 1, 2, 3, "Estadio Universitario"],
+["2026-11-08T01:00Z", 4, 5, 4, 0, "Estadio Nemesio Díez Riega"],
+["2026-11-08T03:10Z", 10, 2, 2, 2, "Estadio Olímpico Universitario"],
+["2026-11-09T00:00Z", 11, 12, 0, 2, "Estadio Corregidora"],
+["2026-11-09T02:10Z", 6, 0, 1, 1, "Estadio León"],
+["2026-11-14T23:00Z", 11, 5, 0, 1, "Estadio Corregidora"],
+["2026-11-21T01:00Z", 12, 13, 1, 1, "Estadio Cuauhtémoc"],
+["2026-11-21T03:00Z", 17, 3, 3, 3, "Estadio Olímpico Benito Juárez"],
+["2026-11-21T03:10Z", 8, 16, 1, 0, "Estadio Caliente"],
+["2026-11-21T22:50Z", 7, 4, 2, 0, "Estadio Hidalgo"],
+["2026-11-21T23:00Z", 9, 6, 1, 2, "Estadio Corona"],
+["2026-11-22T01:00Z", 10, 5, 0, 2, "Estadio Olímpico Universitario"],
+["2026-11-22T03:00Z", 14, 2, 1, 0, "Estadio Universitario"],
+["2026-11-22T23:07Z", 0, 1, 1, 0, "Estadio Akron"],
+["2026-11-23T01:10Z", 11, 15, 2, 2, "Estadio Corregidora"]
+]}
+</script>
+<script id="engine">
+const Liga = (() => {
+  const quarterfinals = [[0,7], [1,6], [2,5], [3,4]];
+  const rounds = ['Quarterfinals', 'Semifinals', 'Final'];
+  function seedRandom(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) >>> 0;
+      let t = Math.imul(seed ^ seed >>> 15, seed | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function standings(clubs, games) {
+    const rows = clubs.map(() => ({ played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, points: 0 }));
+    for (const [,h,a,x,y] of games) {
+      for (const [i,forGoals,against] of [[h,x,y],[a,y,x]]) {
+        const row = rows[i]; row.played++; row.gf += forGoals; row.ga += against;
+        if (forGoals > against) { row.wins++; row.points += 3; }
+        else if (forGoals === against) { row.draws++; row.points++; }
+        else row.losses++;
+      }
+    }
+    return rows;
+  }
+  function fit(clubs, games, mode) {
+    const size = clubs.length;
+    const rates = [3,4].map(i => games.reduce((total,g) => total + g[i], 0) / games.length);
+    if (mode === 'league') return () => rates;
+    const w = [...rates.map(Math.log), ...Array(2 * size).fill(0)];
+    for (let step = 0; step < 850; step++) {
+      const grad = [0,0,...w.slice(2).map(v => -6 * v)];
+      for (const [,h,a,x,y] of games) {
+        for (const [side,attack,defense,goals] of [[0,h,a,x],[1,a,h,y]]) {
+          const i = 2 + attack, j = 2 + size + defense;
+          const residual = goals - Math.exp(w[side] + w[i] + w[j]);
+          grad[side] += residual; grad[i] += residual; grad[j] += residual;
+        }
+      }
+      for (let i = 0; i < w.length; i++) w[i] += .002 * grad[i];
+    }
+    return (h,a) => [Math.exp(w[0] + w[2+h] + w[2+size+a]), Math.exp(w[1] + w[2+a] + w[2+size+h])];
+  }
+  function poisson(rate) {
+    const p = [Math.exp(-rate)];
+    for (let i = 1; i <= 22; i++) p.push(p[i-1] * rate / i);
+    return p;
+  }
+  function forecast(rate, h, a) {
+    const [x,y] = rate(h,a).map(poisson);
+    let mode = [0,0,0]; const outcomes = [0,0,0];
+    for (let i = 0; i < x.length; i++) for (let j = 0; j < y.length; j++) {
+      const p = x[i] * y[j];
+      outcomes[1 + Math.sign(j-i)] += p;
+      if (p > mode[2]) mode = [i,j,p];
+    }
+    return { mode, outcomes };
+  }
+  function shootout(random) {
+    const goals = [0,0], taken = [0,0];
+    const first = random() < .5 ? 0 : 1;
+    const kick = side => { taken[side]++; goals[side] += Number(random() < .75); };
+    for (let i = 0; i < 10; i++) {
+      kick((first + i) % 2);
+      if (goals.some((g,s) => g > goals[1-s] + 5 - taken[1-s])) return goals;
+    }
+    while (goals[0] === goals[1]) { kick(first); kick(1-first); }
+    return goals;
+  }
+  function simulator(rate, seed) {
+    const random = seedRandom(seed);
+    const cdf = p => { let sum = 0; return p.map(v => sum += v); };
+    const tables = [1, 1/3].map(factor => Array.from({length: 8}, (_,h) =>
+      Array.from({length: 8}, (_,a) => rate(h,a).map(l => cdf(poisson(l * factor))))));
+    function score(h,a,extra = false) {
+      return tables[Number(extra)][h][a].map(c => {
+        const draw = random(); let i = 0;
+        while (i < c.length - 1 && draw >= c[i]) i++;
+        return i;
+      });
+    }
+    function round(pairs, phase) {
+      return pairs.map(([b,w]) => {
+        const first = score(w,b), second = score(b,w);
+        const aggregate = [first[1] + second[0], first[0] + second[1]];
+        let extra = null, penalties = null, decidedBy = 'Regulation';
+        if (aggregate[0] === aggregate[1]) {
+          if (phase < 2) decidedBy = 'Higher seed';
+          else {
+            extra = score(b,w,true); decidedBy = 'Extra time';
+            aggregate[0] += extra[0]; aggregate[1] += extra[1];
+            if (aggregate[0] === aggregate[1]) { penalties = shootout(random); decidedBy = 'Penalties'; }
+          }
+        }
+        const result = penalties ?? aggregate;
+        return { b,w,first,second,aggregate,extra,penalties,decidedBy,winner: result[0] >= result[1] ? b : w };
+      });
+    }
+    function next(history) {
+      if (history.length === 0) return round(quarterfinals, 0);
+      const winners = history.at(-1).map(t => t.winner).sort((a,b) => a-b);
+      if (history.length === 1) return round([[winners[0],winners[3]],[winners[1],winners[2]]],1);
+      return round([winners],2);
+    }
+    return { next };
+  }
+  function summarize(rate, seed, n) {
+    const sim = simulator(rate, seed);
+    const clubs = Array.from({length:8}, () => [0,0,0]);
+    const matchups = [new Map(),new Map()];
+    const endings = { Regulation: 0, 'Extra time': 0, Penalties: 0 };
+    const add = (map,key) => map.set(key, (map.get(key) ?? 0) + 1);
+    for (let i = 0; i < n; i++) {
+      const history = [];
+      for (let phase = 0; phase < 3; phase++) {
+        const ties = sim.next(history); history.push(ties);
+        for (const t of ties) {
+          clubs[t.winner][phase]++;
+          if (!phase) continue;
+          const map = matchups[phase-1], key = `${t.b},${t.w}`;
+          if (!map.has(key)) map.set(key,{ b:t.b,w:t.w,count:0,legs:[new Map(),new Map()] });
+          const summary = map.get(key); summary.count++;
+          add(summary.legs[0], t.first.join('–')); add(summary.legs[1], t.second.join('–'));
+          if (phase === 2) endings[t.decidedBy]++;
+        }
+      }
+    }
+    const mostCommon = map => [...map].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0]))[0][0];
+    return { clubs, endings, matchups: matchups.map(map => [...map.values()]
+      .sort((a,b) => b.count-a.count || a.b-b.b || a.w-b.w)
+      .map(t => ({ ...t, legs: t.legs.map(mostCommon) }))) };
+  }
+  return { quarterfinals, rounds, standings, fit, forecast, simulator, summarize };
+})();
+</script>
+<script>
+const $ = id => document.getElementById(id);
+const { clubs, games } = JSON.parse($('snapshot').textContent);
+const name = i => clubs[i];
+const pct = n => `${(100*n).toFixed(1)}%`;
+const scoreline = s => s.join('–');
+const heading = (text, level = 'h3') => Object.assign(document.createElement(level), { textContent: text });
+function table(label, columns, rows) {
+  const wrap = Object.assign(document.createElement('div'), { className: 'table-wrap' });
+  const result = document.createElement('table'); result.setAttribute('aria-label', label);
+  function cells(tr, values, header) {
+    values.forEach((value,i) => {
+      const cell = document.createElement(header || i === 0 ? 'th' : 'td');
+      if (header || i === 0) cell.scope = header ? 'col' : 'row';
+      cell.textContent = value; tr.append(cell);
+    });
+  }
+  cells(result.createTHead().insertRow(), columns, true);
+  const body = result.createTBody();
+  for (const row of rows) cells(body.insertRow(),row,false);
+  wrap.append(result); return wrap;
+}
+const models = new Map();
+function getModel(mode) {
+  if (!models.has(mode)) models.set(mode,Liga.fit(clubs,games,mode));
+  return models.get(mode);
+}
+function renderForecast() {
+  const rows = Liga.quarterfinals.flatMap(([b,w]) => [[w,b],[b,w]].map(([h,a],leg) => {
+    const { mode, outcomes } = Liga.forecast(getModel($('model').value),h,a);
+    return [leg + 1,name(h),name(a),`${scoreline(mode.slice(0,2))} (${pct(mode[2])})`, ...outcomes.map(pct)];
+  }));
+  $('fixtures').replaceChildren(table('Quarterfinal forecast',['Leg','Home','Away','Most likely score','Home win','Draw','Away win'],rows));
+}
+function renderStats(result,n) {
+  const clubTable = table('Club advancement',['Seed','Club','Semifinal','Final','Champion'],
+    result.clubs.map((counts,i) => [i+1,name(i),...counts.map(v => pct(v/n))]));
+  const matchTable = table('Most frequent matchups',['Round','Leg 1, home first','Leg 2, home first','Frequency'],
+    result.matchups.flatMap((rows,i) => rows.slice(0,5).map(({b,w,count,legs}) =>
+      [Liga.rounds[i+1],`${name(w)} ${legs[0]} ${name(b)}`,`${name(b)} ${legs[1]} ${name(w)}`,pct(count/n)])));
+  const endings = table('Final deciders',['Decided in','Frequency'],Object.entries(result.endings).map(([k,v]) => [k,pct(v/n)]));
+  $('stats').replaceChildren(clubTable, heading('Most frequent matchups'), matchTable, heading('How finals ended'), endings);
+}
+async function simulateBatch() {
+  const n = $('runs').valueAsNumber, seed = $('seed').valueAsNumber, mode = $('model').value;
+  $('run').disabled = true;
+  $('batch-status').textContent = `Simulating ${n.toLocaleString('en-US')} brackets…`;
+  await new Promise(resolve => setTimeout(resolve, 25));
+  try {
+    renderStats(Liga.summarize(getModel(mode),seed,n),n);
+    $('batch-status').textContent = `${n.toLocaleString('en-US')} brackets · seed ${seed} · ${mode === 'club' ? 'Club attack and defense' : 'League averages'}`;
+  } finally { $('run').disabled = false; }
+}
+let history = [], sim;
+function renderBracket() {
+  const complete = history.length === 3;
+  $('next').disabled = $('finish').disabled = complete;
+  $('next').textContent = complete ? 'Bracket complete' : `Simulate ${Liga.rounds[history.length].toLowerCase()}`;
+  $('play-status').textContent = complete ? `Champion: ${name(history[2][0].winner)}` : `Next round: ${Liga.rounds[history.length]}`;
+  $('bracket').replaceChildren(...history.flatMap((ties,i) => [heading(Liga.rounds[i]),table(Liga.rounds[i],
+    ['First leg','Second leg','Aggregate, higher seed first','Decision','Winner'],ties.map(t => [
+      `${name(t.w)} ${scoreline(t.first)} ${name(t.b)}`, `${name(t.b)} ${scoreline(t.second)} ${name(t.w)}`,
+      scoreline(t.aggregate), [t.decidedBy,t.extra && `ET ${scoreline(t.extra)}`,t.penalties && `PK ${scoreline(t.penalties)}`].filter(Boolean).join(' · '),name(t.winner)
+    ]))]));
+}
+function resetBracket() { history = []; sim = null; renderBracket(); }
+function advance() {
+  if (!$('seed').reportValidity()) return;
+  sim ??= Liga.simulator(getModel($('model').value),$('seed').valueAsNumber);
+  history.push(sim.next(history)); renderBracket();
+}
+$('next').addEventListener('click', advance);
+$('finish').addEventListener('click', () => { if ($('seed').reportValidity()) while (history.length < 3) advance(); });
+$('reset').addEventListener('click', resetBracket);
+$('seed').addEventListener('change',resetBracket);
+$('model').addEventListener('change',() => { resetBracket(); renderForecast(); });
+$('batch').addEventListener('submit', event => { event.preventDefault(); if (!$('run').disabled) void simulateBatch(); });
+const dateFormatter = new Intl.DateTimeFormat('en-US',{ dateStyle:'medium', timeStyle:'short', timeZone:'America/Mexico_City' });
+const archiveRows = games.map(([date,h,a,x,y,venue]) => ({ h,a, row: [dateFormatter.format(new Date(date)),name(h),`${x}–${y}`,name(a),venue] }));
+function renderArchive() {
+  const filter = $('club-filter').value;
+  $('archive').replaceChildren(table('Regular-season matches, Mexico City time',['Date and time (Mexico City)','Home','Score','Away','Venue'],
+    archiveRows.filter(g => filter === 'all' || g.h === Number(filter) || g.a === Number(filter)).map(g => g.row)));
+}
+$('standings').append(table('Regular-season standings',['Rank','Club','Played','W','D','L','GF','GA','GD','Pts'],
+  Liga.standings(clubs,games).map((r,i) => [i+1,name(i),r.played,r.wins,r.draws,r.losses,r.gf,r.ga,r.gf-r.ga,r.points])));
+for (const [i,club] of clubs.entries()) $('club-filter').add(new Option(club,i));
+$('club-filter').addEventListener('change',renderArchive);
+renderArchive(); renderForecast(); resetBracket(); void simulateBatch();
+</script>
+</html>

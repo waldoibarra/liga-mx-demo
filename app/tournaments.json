@@ -1,0 +1,10 @@
+{
+  "editions": [
+    { "id": "apertura-2026", "year": 2026, "half": "apertura", "label": "Apertura 2026", "regularStart": "2026-07-01", "regularEnd": "2026-11-22", "collectUntil": "2027-01-06", "format": "direct-eight-2026-27" },
+    { "id": "clausura-2027", "year": 2026, "half": "clausura", "label": "Clausura 2027", "regularStart": "2027-01-01", "regularEnd": "2027-05-15", "collectUntil": "2027-06-15", "format": "direct-eight-2026-27" }
+  ],
+  "formats": {
+    "direct-eight-2026-27": { "source": "https://cldrsrcs.apilmx.com/v1/docs/Reglamentos/Competencia/1_LIGA_MX/30_LIGA_MX_20260715211255.pdf", "clubs": 18, "regularMatches": 153 }
+  },
+  "teamIds": ["219", "218", "227", "216", "223", "220", "228", "234", "10125", "225", "233", "222", "231", "15720", "232", "229", "226", "17851"]
+}

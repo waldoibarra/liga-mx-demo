@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101714">
+  <title>Simulador Liga MX · Apertura 2026</title>
+  <link rel="icon" href="pitch.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="dashboard.mjs"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell mast-inner">
+      <a class="brand" href="#main"><img src="pitch.svg" alt="" width="36" height="36">Simulador <strong>Liga MX</strong></a>
+      <nav aria-label="Secciones"><a href="#resultados">Resultados</a><a href="#liguilla">Liguilla</a><a href="#datos">Datos</a></nav>
+    </div>
+  </header>
+  <main id="main" class="shell">
+    <div class="title">
+      <div><p class="eyebrow">Liga MX</p><h1 id="edition-title">Simulador de torneos</h1><p>Compara dos escenarios. Los partidos terminados conservan sus resultados reales.</p></div>
+      <div class="cutoff"><label for="edition-picker">Torneo</label><select id="edition-picker" disabled></select><span id="edition-status" role="status"></span></div>
+    </div>
+    <noscript><p>Activa JavaScript para ejecutar las simulaciones.</p></noscript>
+    <section aria-labelledby="setup-title" class="panel setup">
+      <div class="section-head"><div><h2 id="setup-title">Escenarios</h2><p>Configura cada escenario y ejecútalos juntos o por separado.</p></div><button id="run-both" class="primary" disabled>Simular ambos</button></div>
+      <div id="scenarios" class="split"></div>
+      <p id="load-status" role="status">Cargando los datos del torneo…</p>
+    </section>
+    <section id="resultados" aria-labelledby="results-title" class="panel">
+      <div class="section-head"><div><h2 id="results-title">Probabilidades por club</h2><p>Frecuencias simuladas. La diferencia en puntos porcentuales es B menos A.</p></div></div>
+      <div id="highlights" class="split metrics"></div>
+      <div id="probabilities"></div>
+      <details><summary>Cruces más frecuentes y definición de la final</summary><div id="matchups" class="split detail-grid"></div></details>
+    </section>
+    <section id="liguilla" aria-labelledby="bracket-title" class="panel">
+      <div class="section-head"><div><h2 id="bracket-title">Llave de la Liguilla</h2><p>Explora una corrida individual con el modelo y la semilla del escenario elegido.</p></div></div>
+      <div class="bracket-controls"><label for="bracket-scenario">Escenario</label><select id="bracket-scenario"><option value="0">A</option><option value="1">B</option></select><button id="next-round" disabled>Simular cuartos</button><button id="reset-bracket" disabled>Reiniciar llave</button></div>
+      <p id="bracket-status" role="status" class="bracket-status"></p>
+      <div id="bracket" class="bracket"></div>
+      <details id="projection" hidden><summary>Tabla simulada de fase regular</summary><div id="projected-standings"></div></details>
+      <details><summary>Pronóstico por partido de cuartos</summary><div id="fixtures"></div></details>
+    </section>
+    <section id="datos" aria-labelledby="data-title" class="panel">
+      <h2 id="data-title">Datos y reglas</h2>
+      <details><summary>Calendario y marcadores de Liguilla</summary><div id="playoff-results"></div></details>
+      <details><summary>Tabla general y calendario de fase regular</summary><div id="standings"></div><label class="archive-filter">Filtrar por club <select id="club-filter"><option value="all">Todos</option></select></label><div id="archive"></div></details>
+      <details><summary>Reglamento, fuentes y límites del modelo</summary>
+        <ul>
+          <li>Los ocho primeros clasifican sin Play-In. Los cruces de cuartos son 1–8, 2–7, 3–6 y 4–5.</li>
+          <li>En semifinales se reordenan los cuatro clubes por su posición original.</li>
+          <li>Todas las series son de ida y vuelta. En cuartos y semifinales, la mejor posición desempata el global.</li>
+          <li>Una final empatada en el global va a dos tiempos de 15 minutos y, si persiste, a penales.</li>
+          <li>Los marcadores terminados y las localías publicadas se mantienen fijos.</li>
+          <li>Sin localía publicada, se supone que el mejor clasificado cierra en casa.</li>
+          <li>La tabla final publicada fija los puestos al terminar la fase regular.</li>
+          <li>En tablas simuladas, se usan puntos, diferencia, goles y goles de visita con igual número de salidas.</li>
+          <li>Si persiste un empate simulado, se sortea el orden; no se pronostican Fair Play ni cociente.</li>
+        </ul>
+        <p>El modelo Poisson no incorpora lesiones, alineaciones ni cuotas. El modelo por club rindió peor que el promedio de liga en una prueba de 36 partidos.</p>
+        <p>Los tiempos extra usan un tercio de la tasa de gol de la vuelta. Cada penal tiene una conversión supuesta del 75%.</p>
+        <p><a href="https://ligamx.net/cancha/tablas/tablaGeneralClasificacion/sp/60e74c9a334e55">Tabla oficial</a> · <a id="rules-source" href="https://ligamx.net/cancha/reglamentos">Reglamento del torneo</a> · <a href="https://ligamx.net/cancha/calendarios">Calendario</a> · <a href="https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard?dates=20261122">Resultados ESPN</a></p>
+      </details>
+    </section>
+  </main>
+  <template id="scenario-template">
+    <form class="scenario">
+      <div class="scenario-head"><h3></h3><span class="state" aria-hidden="true"></span></div>
+      <fieldset class="fields">
+        <label>Modelo<select name="model"><option value="club">Ataque y defensa por club</option><option value="league">Promedio de liga</option></select></label>
+        <label>Corridas<input name="runs" type="number" min="100" max="200000" step="1" value="200000" required></label>
+        <label>Semilla<input name="seed" type="number" min="0" max="4294967295" step="1" value="20261122" required></label>
+      </fieldset>
+      <div class="scenario-actions"><button type="submit">Simular</button><button type="button" class="cancel" disabled>Cancelar</button></div>
+      <progress max="1" value="0"></progress><p role="status" class="scenario-message"></p>
+    </form>
+  </template>
+</body>
+</html>
