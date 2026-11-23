@@ -44,8 +44,12 @@ export const Liga = (() => {
     for (let i = 1; i <= 22; i++) p.push(p[i-1] * rate / i);
     return p;
   }
+  function playoffGoals(rate, h, a) {
+    // Calibrated against the 14 Apertura 2025 and Clausura 2026 playoff series.
+    return rate(h,a).map(goals => goals * .77);
+  }
   function forecast(rate, h, a) {
-    const [x,y] = rate(h,a).map(poisson);
+    const [x,y] = playoffGoals(rate,h,a).map(poisson);
     let mode = [0,0,0]; const outcomes = [0,0,0];
     for (let i = 0; i < x.length; i++) for (let j = 0; j < y.length; j++) {
       const p = x[i] * y[j];
@@ -71,10 +75,14 @@ export const Liga = (() => {
     const fixtureKey = (phase,h,a,leg) => `${phase}:${Math.min(h,a)}:${Math.max(h,a)}:${leg}`;
     const fixtures = new Map(playoffs.map(g => [fixtureKey(g.phase,g.home,g.away,g.leg),g]));
     const cdf = p => { let sum = 0; return p.map(v => sum += v); };
-    const tables = [1, 1/3].map(factor => Array.from({length: clubCount}, (_,h) =>
-      Array.from({length: clubCount}, (_,a) => rate(h,a).map(l => cdf(poisson(l * factor))))));
-    function score(h,a,extra = false) {
-      return tables[Number(extra)][h][a].map(c => {
+    const buildTables = (goals, fraction = 1) => Array.from({length: clubCount}, (_,h) =>
+      Array.from({length: clubCount}, (_,a) => goals(h,a).map(l => cdf(poisson(l * fraction)))));
+    const playoffRate = (h,a) => playoffGoals(rate,h,a);
+    const playoff = buildTables(playoffRate);
+    const overtime = buildTables(playoffRate,1/3);
+    const regularSeason = pending.length ? buildTables(rate) : null;
+    function score(h,a,tables = playoff) {
+      return tables[h][a].map(c => {
         const draw = random(); let i = 0;
         while (i < c.length - 1 && draw >= c[i]) i++;
         return i;
@@ -82,7 +90,7 @@ export const Liga = (() => {
     }
     function regular() {
       if (fixedSeeds || (pending.length === 0 && games.length === 0)) return { seeds: fixedSeeds ?? quarterfinals.map(([b]) => b).concat([4,5,6,7]) };
-      const played = pending.length ? [...games, ...pending.map(g => [g.date,g.home,g.away,...score(g.home,g.away)])] : games;
+      const played = pending.length ? [...games, ...pending.map(g => [g.date,g.home,g.away,...score(g.home,g.away,regularSeason)])] : games;
       const rows = standings(Array(clubCount).fill(null),played);
       const away = Array.from({ length: clubCount }, () => [0]);
       for (const [, ,a, ,y] of [...played].sort((x,y) => x[0].localeCompare(y[0]))) away[a].push(away[a].at(-1)+y);
@@ -108,7 +116,7 @@ export const Liga = (() => {
         if (aggregate[0] === aggregate[1] && !penalties) {
           if (phase < 2) decidedBy = 'Higher seed';
           else if (!leg2?.score) {
-            extra = orient(score(secondHome,secondHome === b ? w : b,true)); decidedBy = 'Extra time';
+            extra = orient(score(secondHome,secondHome === b ? w : b,overtime)); decidedBy = 'Extra time';
             aggregate[0] += extra[0]; aggregate[1] += extra[1];
             if (aggregate[0] === aggregate[1]) { penalties = shootout(random); decidedBy = 'Penalties'; }
           } else throw new Error('Completed final is tied without shootout data');

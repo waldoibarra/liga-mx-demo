@@ -27,6 +27,28 @@ test('aggregate ties favor the higher seed before the final; the final goes to p
   assert.equal(final.winner, final.penalties[0] > final.penalties[1] ? final.b : final.w);
 });
 
+test('both playoff models reproduce a lower two-leg goal environment', () => {
+  for (const model of ['club','league']) {
+    const sim = Liga.simulator(Liga.fit(clubs, games, model), 20261122);
+    let goals = 0, high = 0;
+    const series = 7000;
+    for (let i = 0; i < series / 7; i++) {
+      const history = [];
+      for (let phase = 0; phase < 3; phase++) {
+        const ties = sim.next(history);
+        history.push(ties);
+        for (const { first, second } of ties) {
+          const total = [...first,...second].reduce((sum, n) => sum + n, 0);
+          goals += total;
+          high += Number(total >= 8);
+        }
+      }
+    }
+    assert.ok(goals / series < 5.6, `${model}: ${goals / series} goals per series`);
+    assert.ok(high / series < .22, `${model}: ${high / series} with 8+ goals`);
+  }
+});
+
 test('progress reporting preserves deterministic results and every bracket has one champion', () => {
   const rate = Liga.fit(clubs, games, 'club');
   const progress = [];
