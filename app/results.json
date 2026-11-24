@@ -1,1 +1,76 @@
-{}
+{
+  "apertura-2026": [
+    {
+      "id": "401931986",
+      "date": "2026-11-26T01:00Z",
+      "phase": 0,
+      "home": 4,
+      "away": 3,
+      "venue": "Estadio Nemesio Díez Riega",
+      "leg": 1
+    },
+    {
+      "id": "401931998",
+      "date": "2026-11-26T03:10Z",
+      "phase": 0,
+      "home": 5,
+      "away": 2,
+      "venue": "Estadio BBVA",
+      "leg": 1
+    },
+    {
+      "id": "401931982",
+      "date": "2026-11-27T01:00Z",
+      "phase": 0,
+      "home": 7,
+      "away": 0,
+      "venue": "Estadio Hidalgo",
+      "leg": 1
+    },
+    {
+      "id": "401931995",
+      "date": "2026-11-27T03:10Z",
+      "phase": 0,
+      "home": 6,
+      "away": 1,
+      "venue": "Estadio León",
+      "leg": 1
+    },
+    {
+      "id": "401931997",
+      "date": "2026-11-29T01:00Z",
+      "phase": 0,
+      "home": 3,
+      "away": 4,
+      "venue": "Estadio Jalisco",
+      "leg": 2
+    },
+    {
+      "id": "401931996",
+      "date": "2026-11-29T03:10Z",
+      "phase": 0,
+      "home": 2,
+      "away": 5,
+      "venue": "Estadio Banorte",
+      "leg": 2
+    },
+    {
+      "id": "401931983",
+      "date": "2026-11-30T01:07Z",
+      "phase": 0,
+      "home": 0,
+      "away": 7,
+      "venue": "Estadio Akron",
+      "leg": 2
+    },
+    {
+      "id": "401932000",
+      "date": "2026-11-30T03:00Z",
+      "phase": 0,
+      "home": 1,
+      "away": 6,
+      "venue": "Estadio Banorte",
+      "leg": 2
+    }
+  ]
+}
