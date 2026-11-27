@@ -33,7 +33,11 @@
       "home": 7,
       "away": 0,
       "venue": "Estadio Hidalgo",
-      "leg": 1
+      "leg": 1,
+      "score": [
+        2,
+        1
+      ]
     },
     {
       "id": "401931995",
@@ -42,7 +46,11 @@
       "home": 6,
       "away": 1,
       "venue": "Estadio León",
-      "leg": 1
+      "leg": 1,
+      "score": [
+        0,
+        4
+      ]
     },
     {
       "id": "401931997",
